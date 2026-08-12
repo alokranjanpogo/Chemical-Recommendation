@@ -3,19 +3,19 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-# --------------------------------------------------
+# =====================================================
 # PAGE CONFIG
-# --------------------------------------------------
+# =====================================================
 
 st.set_page_config(
-    page_title="Water Treatment Dashboard",
+    page_title="Water Treatment Recommendation System",
     page_icon="💧",
     layout="wide"
 )
 
-# --------------------------------------------------
+# =====================================================
 # LOAD DATA
-# --------------------------------------------------
+# =====================================================
 
 @st.cache_data
 def load_data():
@@ -23,30 +23,42 @@ def load_data():
 
 df = load_data()
 
-# --------------------------------------------------
+# =====================================================
 # HEADER
-# --------------------------------------------------
+# =====================================================
 
-st.title("💧 Water Treatment Chemical Recommendation System")
-st.markdown("### Intelligent Coagulant Recommendation Dashboard")
+st.title("💧 Water Treatment Chemical Recommendation Dashboard")
 
-st.markdown("---")
+st.markdown("""
+### Intelligent Coagulant Recommendation System
 
-# --------------------------------------------------
+Enter Raw Water Turbidity and get:
+
+✅ Recommended Chemical  
+✅ PAC Dose  
+✅ Alum Dose  
+✅ Polymer Dose  
+✅ Chlorine Dose  
+✅ Interactive Dosage Trend Analysis
+""")
+
+st.divider()
+
+# =====================================================
 # SIDEBAR
-# --------------------------------------------------
+# =====================================================
 
 st.sidebar.header("Input Parameters")
 
-turbidity = st.sidebar.slider(
-    "Raw Water Turbidity (NTU)",
+turbidity = st.sidebar.number_input(
+    "Enter Turbidity (NTU)",
     min_value=1,
     max_value=800,
     value=65
 )
 
 selected_chemicals = st.sidebar.multiselect(
-    "Select Chemicals for Trend Analysis",
+    "Select Chemicals for Trend Graph",
     [
         "Powder_PAC_ppm",
         "Liquid_PAC_ppm",
@@ -55,35 +67,40 @@ selected_chemicals = st.sidebar.multiselect(
         "Polymer_ppm",
         "Chlorine_ppm"
     ],
-    default=["Liquid_PAC_ppm", "Powder_PAC_ppm"]
+    default=[
+        "Liquid_PAC_ppm",
+        "Powder_PAC_ppm"
+    ]
 )
 
-# --------------------------------------------------
-# FIND NEAREST TURBIDITY
-# --------------------------------------------------
+# =====================================================
+# FIND CLOSEST TURBIDITY VALUE
+# =====================================================
 
-nearest_row = df.iloc[
+closest_row = df.iloc[
     (df["Turbidity_NTU"] - turbidity).abs().argsort()[:1]
 ]
 
-recommendation = nearest_row["Recommended_Chemical"].values[0]
+recommendation = closest_row["Recommended_Chemical"].values[0]
 
-powder_pac = nearest_row["Powder_PAC_ppm"].values[0]
-liquid_pac = nearest_row["Liquid_PAC_ppm"].values[0]
-liquid_alum = nearest_row["Liquid_Alum_ppm"].values[0]
-solid_alum = nearest_row["Solid_Alum_ppm"].values[0]
-polymer = nearest_row["Polymer_ppm"].values[0]
-chlorine = nearest_row["Chlorine_ppm"].values[0]
+powder_pac = closest_row["Powder_PAC_ppm"].values[0]
+liquid_pac = closest_row["Liquid_PAC_ppm"].values[0]
+liquid_alum = closest_row["Liquid_Alum_ppm"].values[0]
+solid_alum = closest_row["Solid_Alum_ppm"].values[0]
+polymer = closest_row["Polymer_ppm"].values[0]
+chlorine = closest_row["Chlorine_ppm"].values[0]
 
-# --------------------------------------------------
-# RECOMMENDATION
-# --------------------------------------------------
+# =====================================================
+# RECOMMENDATION BOX
+# =====================================================
 
 st.success(f"✅ Recommended Chemical : {recommendation}")
 
-# --------------------------------------------------
+# =====================================================
 # KPI CARDS
-# --------------------------------------------------
+# =====================================================
+
+st.subheader("Recommended Dosages")
 
 col1, col2, col3 = st.columns(3)
 
@@ -122,16 +139,16 @@ with col5:
 with col6:
     st.metric(
         "Chlorine (ppm)",
-        round(chlorine, 2)
+        0 if pd.isna(chlorine) else round(chlorine, 2)
     )
 
-st.markdown("---")
+st.divider()
 
-# --------------------------------------------------
+# =====================================================
 # DOSAGE BAR CHART
-# --------------------------------------------------
+# =====================================================
 
-st.subheader("📊 Recommended Dosage at Selected Turbidity")
+st.subheader("📊 Dosage at Selected Turbidity")
 
 dose_df = pd.DataFrame({
     "Chemical": [
@@ -148,7 +165,7 @@ dose_df = pd.DataFrame({
         0 if pd.isna(liquid_alum) else liquid_alum,
         0 if pd.isna(solid_alum) else solid_alum,
         0 if pd.isna(polymer) else polymer,
-        chlorine
+        0 if pd.isna(chlorine) else chlorine
     ]
 })
 
@@ -158,54 +175,54 @@ bar_fig = px.bar(
     y="Dose",
     color="Dose",
     text="Dose",
-    title=f"Chemical Dosage at {turbidity} NTU"
+    title=f"Recommended Dosage at {turbidity} NTU"
 )
 
 bar_fig.update_traces(textposition="outside")
 
 st.plotly_chart(bar_fig, use_container_width=True)
 
-# --------------------------------------------------
-# TREND CHART
-# --------------------------------------------------
+# =====================================================
+# TREND ANALYSIS
+# =====================================================
 
-st.subheader("📈 Chemical Trend vs Turbidity")
+st.subheader("📈 Chemical Dosage Trend")
 
 trend_fig = go.Figure()
 
-for chemical in selected_chemicals:
+for chem in selected_chemicals:
 
     trend_fig.add_trace(
         go.Scatter(
             x=df["Turbidity_NTU"],
-            y=df[chemical],
+            y=df[chem],
             mode="lines",
-            name=chemical.replace("_ppm", "")
+            name=chem.replace("_ppm", "")
         )
     )
 
 trend_fig.add_vline(
     x=turbidity,
-    line_dash="dash",
-    line_color="red"
+    line_color="red",
+    line_dash="dash"
 )
 
 trend_fig.update_layout(
     height=600,
     template="plotly_white",
     xaxis_title="Turbidity (NTU)",
-    yaxis_title="Dose (ppm)"
+    yaxis_title="Dosage (ppm)"
 )
 
 st.plotly_chart(trend_fig, use_container_width=True)
 
-# --------------------------------------------------
+# =====================================================
 # RECOMMENDATION TABLE
-# --------------------------------------------------
+# =====================================================
 
 st.subheader("📋 Current Recommendation")
 
-recommendation_df = pd.DataFrame({
+result_df = pd.DataFrame({
     "Parameter": [
         "Turbidity",
         "Recommended Chemical",
@@ -229,19 +246,36 @@ recommendation_df = pd.DataFrame({
 })
 
 st.dataframe(
-    recommendation_df,
+    result_df,
     use_container_width=True
 )
 
-# --------------------------------------------------
-# DOWNLOAD
-# --------------------------------------------------
+# =====================================================
+# DOWNLOAD BUTTON
+# =====================================================
 
-st.subheader("⬇ Download Recommendation")
-
-csv = recommendation_df.to_csv(index=False)
+csv = result_df.to_csv(index=False)
 
 st.download_button(
-    label="Download CSV",
+    label="⬇ Download Recommendation",
     data=csv,
-    file_name="Prototype_Coagulant_Database"
+    file_name="Chemical_Recommendation.csv",
+    mime="text/csv"
+)
+
+# =====================================================
+# VIEW DATABASE
+# =====================================================
+
+with st.expander("📂 View Complete Database"):
+    st.dataframe(df, use_container_width=True)
+
+# =====================================================
+# FOOTER
+# =====================================================
+
+st.divider()
+
+st.caption(
+    "Prototype Water Treatment Coagulant Recommendation System"
+)
