@@ -244,4 +244,4 @@ csv = recommendation_df.to_csv(index=False)
 st.download_button(
     label="Download CSV",
     data=csv,
-    file_name="Chemical
+    file_name="Prototype_Coagulant_Database"
